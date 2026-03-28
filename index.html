@@ -49,43 +49,79 @@ var sEl=document.getElementById('score'),hEl=document.getElementById('hint'),cEl
 var W,H;
 function rsz(){W=C.width=innerWidth;H=C.height=innerHeight;}rsz();addEventListener('resize',rsz);
 var score=0,sel='apple',objs=[],parts=[],hitP=0,slowT=0,hintOn=true,cTO=null;
-var fan={x:0,y:0,ang:0,rpm:220,n:5,len:0,w:0,hub:0,rod:0};
+
+/* Fan — perspective foreshortening: Y axis scaled by PERSP so it reads as 3D from below */
+var PERSP = 0.38; /* vertical squish factor — makes it look like you're looking up at it */
+var fan={x:0,y:0,ang:0,rpm:200,n:5,len:0,w:0,hub:0,rod:0};
 function omega(){return(fan.rpm/60)*Math.PI*2;}
-function iF(){fan.x=W/2;fan.y=H*.18;fan.len=Math.min(W,H)*.22;fan.w=fan.len*.22;fan.hub=fan.len*.09;fan.rod=H*.06;}
+function iF(){fan.x=W/2;fan.y=H*.2;fan.len=Math.min(W,H)*.26;fan.w=fan.len*.18;fan.hub=fan.len*.08;fan.rod=H*.07;}
+
 var CF={
   apple:{e:'🍎',r:18,m:1,  res:.72,drag:.9995,col:'#c0392b',pts:10,lbl:'NICE'},
   mug:  {e:'☕',  r:22,m:2.5,res:.42,drag:.9992,col:'#8b7355',pts:20,lbl:'SOLID'},
   ball: {e:'🎳',r:28,m:6,  res:.22,drag:.9988,col:'#2c2c3a',pts:50,lbl:'POWER'}
 };
+
 function launch(){
   if(hintOn){hintOn=false;hEl.style.opacity='0';}
   var c=CF[sel];
-  /* Launch from bottom-center with slight horizontal randomness */
-  var lx=W/2+(Math.random()-.5)*60;
-  var ly=H*.92;
-  /* Aim straight at fan hub with a small random spread */
-  var dx=(fan.x-lx)+(Math.random()-.5)*40;
-  var dy=fan.y-ly;  /* negative = upward */
+  var lx=W/2+(Math.random()-.5)*60, ly=H*.92;
+  var dx=(fan.x-lx)+(Math.random()-.5)*40, dy=fan.y-ly;
   var dist=Math.hypot(dx,dy);
-  /* Speed tuned so object reliably reaches fan Y */
-  /* Using kinematics: need vy^2 > 2*G*dist roughly */
-  /* G=0.28 per frame^2, dist~500px -> vy needs ~17+ */
   var spd=22+Math.random()*4;
-  objs.push({
-    c:c,
-    x:lx,y:ly,
-    vx:(dx/dist)*spd*0.18,
-    vy:(dy/dist)*spd,   /* dy is negative so vy is negative = up */
-    a:Math.random()*Math.PI*2,
-    spin:(Math.random()-.5)*.3,
-    alpha:1,ft:0
-  });
+  objs.push({c:c,x:lx,y:ly,vx:(dx/dist)*spd*0.18,vy:(dy/dist)*spd,a:Math.random()*Math.PI*2,spin:(Math.random()-.5)*.3,alpha:1,ft:0});
 }
-function bp(b,ang){
-  var a=ang+(b/fan.n)*Math.PI*2,ca=Math.cos(a),sa=Math.sin(a),pc=Math.cos(a+Math.PI/2),ps=Math.sin(a+Math.PI/2);
-  var tx=fan.x+ca*fan.len,ty=fan.y+sa*fan.len,rx=fan.x+ca*fan.hub,ry=fan.y+sa*fan.hub,hw=fan.w/2,h2=hw*.3;
-  return [{x:rx+pc*hw,y:ry+ps*hw},{x:tx+pc*h2,y:ty+ps*h2},{x:tx-pc*h2,y:ty-ps*h2},{x:rx-pc*hw,y:ry-ps*hw}];
+
+/* Blade as perspective ellipse — drawn using canvas ellipse transform */
+function drawBlade(b, ang){
+  var a = ang + (b/fan.n)*Math.PI*2;
+  /* tip and root in world space */
+  var cosA=Math.cos(a), sinA=Math.sin(a);
+  var tx=fan.x+cosA*fan.len, ty=fan.y+sinA*fan.len*PERSP;
+  var rx=fan.x+cosA*fan.hub, ry=fan.y+sinA*fan.hub*PERSP;
+
+  /* blade width perpendicular, also foreshortened on Y */
+  var hw=fan.w/2;
+  var px=-sinA, py=cosA*PERSP; /* perpendicular direction, Y squished */
+  var plen=Math.hypot(px,py);
+  px/=plen; py/=plen;
+
+  ctx.save();
+
+  /* Draw blade as a rounded quadrilateral */
+  ctx.beginPath();
+  ctx.moveTo(rx+px*hw,   ry+py*hw);
+  ctx.lineTo(tx+px*hw*.25, ty+py*hw*.25);
+  ctx.lineTo(tx-px*hw*.25, ty-py*hw*.25);
+  ctx.lineTo(rx-px*hw,   ry-py*hw);
+  ctx.closePath();
+
+  /* gradient along blade length */
+  var grad=ctx.createLinearGradient(rx,ry,tx,ty);
+  /* lighter on top (far end) since light hits from above */
+  grad.addColorStop(0,'#4a443c');
+  grad.addColorStop(0.4,'#6b5f52');
+  grad.addColorStop(1,'#3a3530');
+  ctx.fillStyle=grad;
+  ctx.strokeStyle='rgba(200,169,110,.12)';
+  ctx.lineWidth=0.5;
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
 }
+
+/* Collision still uses flat polygon for simplicity — close enough */
+function bptsFlat(b,ang){
+  var a=ang+(b/fan.n)*Math.PI*2,ca=Math.cos(a),sa=Math.sin(a);
+  var pc=Math.cos(a+Math.PI/2),ps=Math.sin(a+Math.PI/2);
+  var tx=fan.x+ca*fan.len,ty=fan.y+sa*fan.len*PERSP;
+  var rx=fan.x+ca*fan.hub,ry=fan.y+sa*fan.hub*PERSP;
+  var hw=fan.w/2,h2=hw*.25;
+  /* perpendicular squished */
+  var px=-sa,py=ca*PERSP,plen=Math.hypot(px,py);px/=plen;py/=plen;
+  return [{x:rx+px*hw,y:ry+py*hw},{x:tx+px*h2,y:ty+py*h2},{x:tx-px*h2,y:ty-py*h2},{x:rx-px*hw,y:ry-py*hw}];
+}
+
 function cpSeg(px,py,ax,ay,bx,by){
   var abx=bx-ax,aby=by-ay,t=Math.max(0,Math.min(1,((px-ax)*abx+(py-ay)*aby)/(abx*abx+aby*aby)));
   return{x:ax+t*abx,y:ay+t*aby};
@@ -99,6 +135,7 @@ function circPoly(cx,cy,r,pts){
   }
   return md<r?{dep:r-md,nx:cn.x,ny:cn.y}:null;
 }
+
 function spawnP(x,y,n,col,big){
   for(var i=0;i<n;i++){
     var a=Math.random()*Math.PI*2,s=big?(4+Math.random()*8):(1+Math.random()*4);
@@ -113,46 +150,65 @@ function addS(p,lbl){
   cEl.textContent=lbl;cEl.style.opacity='1';cEl.style.transition='opacity .1s';
   cTO=setTimeout(function(){cEl.style.transition='opacity .8s';cEl.style.opacity='0';},500);
 }
+
 function dF(ang){
+  /* Mounting rod */
   ctx.save();
   var g=ctx.createLinearGradient(fan.x-3,fan.y-fan.rod,fan.x+3,fan.y);
-  g.addColorStop(0,'#333');g.addColorStop(1,'#555');
+  g.addColorStop(0,'#2a2a2a');g.addColorStop(1,'#555');
   ctx.fillStyle=g;ctx.fillRect(fan.x-3,fan.y-fan.rod,6,fan.rod);
   ctx.restore();
-  for(var b=0;b<fan.n;b++){
-    var pts=bp(b,ang);
-    ctx.save();ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
-    for(var p=1;p<4;p++)ctx.lineTo(pts[p].x,pts[p].y);
-    ctx.closePath();
-    var ba=ang+(b/fan.n)*Math.PI*2;
-    var bg=ctx.createLinearGradient(fan.x,fan.y,fan.x+Math.cos(ba)*fan.len,fan.y+Math.sin(ba)*fan.len);
-    bg.addColorStop(0,'#3a3530');bg.addColorStop(.5,'#5c5248');bg.addColorStop(1,'#3a3530');
-    ctx.fillStyle=bg;ctx.strokeStyle='rgba(200,169,110,.15)';ctx.lineWidth=.5;ctx.fill();ctx.stroke();
-    ctx.restore();
-  }
+
+  /* Motor housing — ellipse to suggest perspective */
   ctx.save();
-  var hg=ctx.createRadialGradient(fan.x,fan.y,0,fan.x,fan.y,fan.hub);
-  hg.addColorStop(0,'#7a6e60');hg.addColorStop(.6,'#4a4438');hg.addColorStop(1,'#2e2a24');
-  ctx.beginPath();ctx.arc(fan.x,fan.y,fan.hub,0,Math.PI*2);
+  ctx.beginPath();
+  ctx.ellipse(fan.x, fan.y, fan.hub*1.1, fan.hub*1.1*PERSP*1.6, 0, 0, Math.PI*2);
+  ctx.fillStyle='#2e2a24';
+  ctx.strokeStyle='rgba(200,169,110,.15)';
+  ctx.lineWidth=1;
+  ctx.fill();ctx.stroke();
+  ctx.restore();
+
+  /* Blades — draw back blades first, then front */
+  /* Sort blades: ones pointing "up" (away from viewer) drawn first */
+  var order=[];
+  for(var b=0;b<fan.n;b++){
+    var a=ang+(b/fan.n)*Math.PI*2;
+    var sinA=Math.sin(a);
+    order.push({b:b,sinA:sinA});
+  }
+  order.sort(function(x,y){return x.sinA-y.sinA;}); /* negative sin = up = far = draw first */
+  for(var i=0;i<order.length;i++) drawBlade(order[i].b, ang);
+
+  /* Hub cap on top */
+  ctx.save();
+  var hg=ctx.createRadialGradient(fan.x,fan.y-fan.hub*.15,0,fan.x,fan.y,fan.hub*.9);
+  hg.addColorStop(0,'#9a8e7e');hg.addColorStop(.5,'#5a5048');hg.addColorStop(1,'#2e2a24');
+  ctx.beginPath();
+  ctx.ellipse(fan.x, fan.y, fan.hub*.9, fan.hub*.9*PERSP*1.6, 0, 0, Math.PI*2);
   ctx.fillStyle=hg;ctx.fill();
-  ctx.strokeStyle='rgba(200,169,110,.3)';ctx.lineWidth=1;ctx.stroke();
-  ctx.beginPath();ctx.arc(fan.x,fan.y,fan.hub*.25,0,Math.PI*2);
+  ctx.strokeStyle='rgba(200,169,110,.25)';ctx.lineWidth=1;ctx.stroke();
+  /* center pin */
+  ctx.beginPath();
+  ctx.ellipse(fan.x, fan.y, fan.hub*.22, fan.hub*.22*PERSP*1.6, 0, 0, Math.PI*2);
   ctx.fillStyle='#c8a96e';ctx.fill();
   ctx.restore();
 }
+
 function dBg(){
   ctx.fillStyle='#0e0e0f';ctx.fillRect(0,0,W,H);
   var ch=fan.y-fan.rod;
-  var cg=ctx.createLinearGradient(0,0,0,ch+60);
-  cg.addColorStop(0,'#1a1a1c');cg.addColorStop(1,'#0e0e0f');
-  ctx.fillStyle=cg;ctx.fillRect(0,0,W,ch+60);
-  ctx.strokeStyle='rgba(200,169,110,.12)';ctx.lineWidth=1;
+  var cg=ctx.createLinearGradient(0,0,0,ch+80);
+  cg.addColorStop(0,'#1c1a18');cg.addColorStop(1,'#0e0e0f');
+  ctx.fillStyle=cg;ctx.fillRect(0,0,W,ch+80);
+  ctx.strokeStyle='rgba(200,169,110,.1)';ctx.lineWidth=1;
   ctx.beginPath();ctx.moveTo(0,ch);ctx.lineTo(W,ch);ctx.stroke();
   var fg=ctx.createLinearGradient(0,H-80,0,H);
   fg.addColorStop(0,'transparent');fg.addColorStop(1,'rgba(200,169,110,.04)');
   ctx.fillStyle=fg;ctx.fillRect(0,H-80,W,80);
 }
-var lT=0,G=0.28;   /* reduced gravity so objects reach fan */
+
+var lT=0,G=0.28;
 function loop(ts){
   requestAnimationFrame(loop);
   var dt=Math.min((ts-lT)/16.67,2.5);lT=ts;
@@ -163,12 +219,11 @@ function loop(ts){
   for(var i=0;i<objs.length;i++){
     var o=objs[i];
     if(o.ft>0){o.ft-=dt;o.alpha=Math.max(0,o.ft/30);continue;}
-    o.vy+=G*step;
-    o.vx*=Math.pow(o.c.drag,step);
+    o.vy+=G*step;o.vx*=Math.pow(o.c.drag,step);
     o.x+=o.vx*step;o.y+=o.vy*step;
     o.a+=o.spin*step;o.spin*=.99;
     for(var b=0;b<fan.n;b++){
-      var pts=bp(b,fan.ang),col=circPoly(o.x,o.y,o.c.r,pts);
+      var pts=bptsFlat(b,fan.ang),col=circPoly(o.x,o.y,o.c.r,pts);
       if(col){
         o.x+=col.nx*col.dep;o.y+=col.ny*col.dep;
         var rx=o.x-fan.x,ry=o.y-fan.y;
@@ -180,14 +235,8 @@ function loop(ts){
           o.vx+=bvx*.4;o.vy+=bvy*.4;
           o.spin+=(Math.random()-.5)*.8*(1/o.c.m);
           var iv=Math.abs(vR);
-          if(iv>5){
-            spawnP(o.x,o.y,14,o.c.col,true);
-            hitP=3;slowT=20;
-            addS(Math.round(o.c.pts*(iv/4)),o.c.lbl+'!');
-          } else {
-            spawnP(o.x,o.y,6,o.c.col,false);
-            addS(o.c.pts,o.c.lbl);
-          }
+          if(iv>5){spawnP(o.x,o.y,14,o.c.col,true);hitP=3;slowT=20;addS(Math.round(o.c.pts*(iv/4)),o.c.lbl+'!');}
+          else{spawnP(o.x,o.y,6,o.c.col,false);addS(o.c.pts,o.c.lbl);}
         }
       }
     }
@@ -195,16 +244,10 @@ function loop(ts){
     if(o.y>H+pad||o.x<-pad||o.x>W+pad){if(o.ft===0)o.ft=30;}
   }
   objs=objs.filter(function(o){return o.alpha>0||(o.ft===0&&o.y<H+100);});
-  for(var i=0;i<parts.length;i++){
-    var p=parts[i];p.vy+=.1*step;p.x+=p.vx*step;p.y+=p.vy*step;p.life-=p.dec*step;
-  }
+  for(var i=0;i<parts.length;i++){var p=parts[i];p.vy+=.1*step;p.x+=p.vx*step;p.y+=p.vy*step;p.life-=p.dec*step;}
   parts=parts.filter(function(p){return p.life>0;});
   dBg();
-  for(var i=0;i<parts.length;i++){
-    var p=parts[i];ctx.save();ctx.globalAlpha=p.life*.9;
-    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-    ctx.fillStyle=p.col;ctx.fill();ctx.restore();
-  }
+  for(var i=0;i<parts.length;i++){var p=parts[i];ctx.save();ctx.globalAlpha=p.life*.9;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=p.col;ctx.fill();ctx.restore();}
   dF(fan.ang);
   for(var i=0;i<objs.length;i++){
     var o=objs[i];ctx.save();ctx.globalAlpha=o.alpha;
