@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fan Smash — Fanimation</title>
+<title>Fan Smash â Fanimation</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Mono:wght@300;400&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -36,11 +36,11 @@ canvas{display:block;position:fixed;top:0;left:0}
 <canvas id="c"></canvas>
 <div id="hint">Click anywhere to throw</div>
 <div id="object-picker">
-  <button class="obj-btn active" data-type="apple"><span class="icon">🍎</span><span>Apple</span><span class="weight">Light</span></button>
-  <button class="obj-btn" data-type="mug"><span class="icon">☕</span><span>Mug</span><span class="weight">Medium</span></button>
-  <button class="obj-btn" data-type="ball"><span class="icon">🎳</span><span>Ball</span><span class="weight">Heavy</span></button>
+  <button class="obj-btn active" data-type="apple"><span class="icon">ð</span><span>Apple</span><span class="weight">Light</span></button>
+  <button class="obj-btn" data-type="mug"><span class="icon">â</span><span>Mug</span><span class="weight">Medium</span></button>
+  <button class="obj-btn" data-type="ball"><span class="icon">🪨</span><span>Rock</span><span class="weight">Heavy</span></button>
 </div>
-<button id="restart-btn">↺ Restart</button>
+<button id="restart-btn">âº Restart</button>
 <div id="combo"></div>
 <script>
 (function(){
@@ -50,16 +50,16 @@ var W,H;
 function rsz(){W=C.width=innerWidth;H=C.height=innerHeight;}rsz();addEventListener('resize',rsz);
 var score=0,sel='apple',objs=[],parts=[],hitP=0,slowT=0,hintOn=true,cTO=null;
 
-/* Fan — perspective foreshortening: Y axis scaled by PERSP so it reads as 3D from below */
-var PERSP = 0.38; /* vertical squish factor — makes it look like you're looking up at it */
+/* Fan â perspective foreshortening: Y axis scaled by PERSP so it reads as 3D from below */
+var PERSP = 0.38; /* vertical squish factor â makes it look like you're looking up at it */
 var fan={x:0,y:0,ang:0,rpm:200,n:5,len:0,w:0,hub:0,rod:0};
 function omega(){return(fan.rpm/60)*Math.PI*2;}
 function iF(){fan.x=W/2;fan.y=H*.2;fan.len=Math.min(W,H)*.26;fan.w=fan.len*.18;fan.hub=fan.len*.08;fan.rod=H*.07;}
 
 var CF={
-  apple:{e:'🍎',r:18,m:1,  res:.72,drag:.9995,col:'#c0392b',pts:10,lbl:'NICE'},
-  mug:  {e:'☕',  r:22,m:2.5,res:.42,drag:.9992,col:'#8b7355',pts:20,lbl:'SOLID'},
-  ball: {e:'🎳',r:28,m:6,  res:.22,drag:.9988,col:'#2c2c3a',pts:50,lbl:'POWER'}
+  apple:{e:'ð',r:18,m:1,  res:.72,drag:.9995,col:'#c0392b',pts:10,lbl:'NICE'},
+  mug:  {e:'â',  r:22,m:2.5,res:.42,drag:.9992,col:'#8b7355',pts:20,lbl:'SOLID'},
+  ball: {e:'ð³',r:28,m:6,  res:.22,drag:.9988,col:'#2c2c3a',pts:50,lbl:'POWER'}
 };
 
 function launch(){
@@ -72,7 +72,7 @@ function launch(){
   objs.push({c:c,x:lx,y:ly,vx:(dx/dist)*spd*0.18,vy:(dy/dist)*spd,a:Math.random()*Math.PI*2,spin:(Math.random()-.5)*.3,alpha:1,ft:0});
 }
 
-/* Blade as perspective ellipse — drawn using canvas ellipse transform */
+/* Blade as perspective ellipse â drawn using canvas ellipse transform */
 function drawBlade(b, ang){
   var a = ang + (b/fan.n)*Math.PI*2;
   /* tip and root in world space */
@@ -110,7 +110,7 @@ function drawBlade(b, ang){
   ctx.restore();
 }
 
-/* Collision still uses flat polygon for simplicity — close enough */
+/* Collision still uses flat polygon for simplicity â close enough */
 function bptsFlat(b,ang){
   var a=ang+(b/fan.n)*Math.PI*2,ca=Math.cos(a),sa=Math.sin(a);
   var pc=Math.cos(a+Math.PI/2),ps=Math.sin(a+Math.PI/2);
@@ -159,7 +159,7 @@ function dF(ang){
   ctx.fillStyle=g;ctx.fillRect(fan.x-3,fan.y-fan.rod,6,fan.rod);
   ctx.restore();
 
-  /* Motor housing — ellipse to suggest perspective */
+  /* Motor housing â ellipse to suggest perspective */
   ctx.save();
   ctx.beginPath();
   ctx.ellipse(fan.x, fan.y, fan.hub*1.1, fan.hub*1.1*PERSP*1.6, 0, 0, Math.PI*2);
@@ -169,7 +169,7 @@ function dF(ang){
   ctx.fill();ctx.stroke();
   ctx.restore();
 
-  /* Blades — draw back blades first, then front */
+  /* Blades â draw back blades first, then front */
   /* Sort blades: ones pointing "up" (away from viewer) drawn first */
   var order=[];
   for(var b=0;b<fan.n;b++){
