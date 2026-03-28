@@ -50,7 +50,7 @@ var W,H;
 function rsz(){W=C.width=innerWidth;H=C.height=innerHeight;}rsz();addEventListener("resize",rsz);
 var score=0,sel="apple",objs=[],parts=[],hitP=0,slowT=0,hintOn=true,cTO=null;
 var PERSP=0.38;
-var fan={x:0,y:0,ang:0,rpm:200,n:5,len:0,w:0,hub:0,rod:0};
+var fan={x:0,y:0,ang:0,rpm:100,n:5,len:0,w:0,hub:0,rod:0};
 function omega(){return(fan.rpm/60)*Math.PI*2;}
 function iF(){fan.x=W/2;fan.y=H*.2;fan.len=Math.min(W,H)*.26;fan.w=fan.len*.18;fan.hub=fan.len*.08;fan.rod=H*.07;}
 var CF={
