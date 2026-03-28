@@ -148,6 +148,7 @@ function loop(ts){
   if(slowT>0){ctx.save();var v=ctx.createRadialGradient(W/2,H/2,H*.2,W/2,H/2,H*.8);v.addColorStop(0,"transparent");v.addColorStop(1,"rgba(200,169,110,.07)");ctx.fillStyle=v;ctx.fillRect(0,0,W,H);ctx.restore();}
 }
 C.addEventListener("click",launch);
+C.addEventListener("touchstart",function(e){e.preventDefault();launch();},{passive:false});
 document.querySelectorAll(".obj-btn").forEach(function(btn){btn.addEventListener("click",function(e){e.stopPropagation();document.querySelectorAll(".obj-btn").forEach(function(b){b.classList.remove("active");});btn.classList.add("active");sel=btn.dataset.type;});});
 document.getElementById("restart-btn").addEventListener("click",function(e){e.stopPropagation();objs=[];parts=[];score=0;sEl.textContent="0";hitP=0;slowT=0;hintOn=true;hEl.style.opacity="1";});
 iF();addEventListener("resize",iF);requestAnimationFrame(loop);
